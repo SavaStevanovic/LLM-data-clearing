@@ -147,9 +147,34 @@ class CapitalizeTransformer(DataFrameTransformer):
         return ". ".join(corrected_sentences)
 
 
-class WordOccurence(DataFrameTransformer):
+class Replacement(DataFrameTransformer):
+    def __init__(self, replacements: dict):
+        self._replacements = replacements
+
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
-        ocurences = self._ocurences(data)
+        changes = {
+            column: data[column].progress_apply(self._correct)
+            for column in data.columns
+        }
+        return data.assign(**changes)
+
+    def _correct(self, text: str) -> str:
+        for k, v in self._replacements.items():
+            text = text.replace(k, v)
+
+        return text
+
+
+class WordOccurence(DataFrameTransformer):
+
+    def __init__(self, fixes: list = None):
+        fixes = fixes if fixes else []
+        self._fixes = fixes
+
+    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
+        ocurences = {
+            k: v for k, v in self._ocurences(data).items() if k not in self._fixes
+        }
         print(
             json.dumps(
                 dict(sorted(ocurences.items(), key=lambda item: item[1], reverse=True)),
@@ -188,32 +213,266 @@ class Column(DataFrameTransformer):
         return data.assign(**changes)
 
 
-class Replacement(DataFrameTransformer):
-    def __init__(self, replacements: dict):
-        self._replacements = replacements
-
-    def __call__(self, data: pd.DataFrame) -> pd.DataFrame:
-        changes = {
-            column: data[column].progress_apply(self._correct)
-            for column in data.columns
-        }
-        return data.assign(**changes)
-
-    def _correct(self, text: str) -> str:
-        for k, v in self._replacements.items():
-            text = text.replace(k, v)
-
-        return text
-
-
-general_transforms = [SerbianCyrillicToLatinTransformer(), WordOccurence()]
+mapping = {
+    "Godine": "godine",
+    "rosija,": "Rosija,",
+    "valentin": "Valentin",
+    "banjaj": "Banjaj",
+    "dbpxxkabe": "države",
+    "rahmon": "Rahmon",
+    "stiven": "Stiven",
+    "oliver": "Oliver",
+    "injca": "Injca",
+    "banjaj": "Banjaj",
+    "„": '"',
+    "“": '"',
+    "alžir": "Alžir",
+    '""': '"',
+    "jusef": "Jusef",
+    "hatavej": "Hatavej",
+    "hale": "Hale",
+    "fajfer": "Fajfer",
+    "hatavej": "Hatavej",
+    "nikola": "Nikola",
+    "eurosong": "Eurosong",
+    "stefan": "Stefan",
+    "dragan": "Dragan",
+    "jovanović": "Jovanović",
+    "aleksandar": "Aleksandar",
+    "uefa": "UEFA",
+    "jugoslavije": "Jugoslavije",
+    "vladimir": "Vladimir",
+    "africi": "Africi",
+    "americi": "Americi",
+    "nemačkoj": "Nemačkoj",
+    "italiji": "Italiji",
+    "popović": "Popović",
+    "evropi": "Evropi",
+    "amerike": "Amerike",
+    "njujorku": "Njujorku",
+    "isidora": "Isidora",
+    "pansa": "Pansa",
+    "zzimmskimm": "zimskim",
+    "dijego": "Dijego",
+    "odanović": "Odanović",
+    "olgom": "Olgom",
+    "piterson": "Piterson",
+    "anđeles": "Anđeles",
+    "kerber": "Kerber",
+    "malik": "Malik",
+    "monro": "Monro",
+    "Bu ": "",
+    "beogradu": "Beogradu",
+    "venecueli": "Venecueli",
+    "kertis": "Kertis",
+    "branka": "Branka",
+    "ćopića": "Ćopića",
+    "skorceni": "Skorceni",
+    "holandiji": "Holandiji",
+    "Maks plank": "Maks Plank",
+    "Kil bil": "Kil Bil",
+    "petković dis": "Petković Dis",
+    "petković": "Petković",
+    "manro": "Manro",
+    "Stivi vonder": "Stivi Vonder",
+    "skandinaviji": "Skandinaviji",
+    "prelević": "Prelević",
+    "ljubek": "Ljubek",
+    "vitman": "Vitman",
+    "pirsu": "Pirsu",
+    "popović": "Popović",
+    "krunić": "Krunić",
+    "saverin": "Saverin",
+    "mjanmaru": "Mjanmaru",
+    "malden": "Malden",
+    "hornasek": "Hornasek",
+    "timora": "Timora",
+    "gotjeu": "Gotjeu",
+    "ivanović": "Ivanović",
+    "australiji": "Australiji",
+    "švedskoj": "Švedskoj",
+    "bolpačić": "Bolpačić",
+    "Mona Liz": "Mona Liz",
+    "patrik": "Patrik",
+    "Haris": "Haris",
+    "kanada": "Kanada",
+    "de žaneir": "De Žaneir",
+    "eliot": "Eliot",
+    "afrike": "Afrike",
+    "andrića": "Andrića",
+    ' "': '"',
+    " ?": "?",
+    " .": ".",
+    " !": "!",
+    '" ': '"',
+    "rohas": "Rohas",
+    "najrobiju": "Najrobiju",
+    "kristi": "Kristi",
+    "pelagić": "Pelagić",
+    "marija": "Marija",
+    "hauer": "Hauer",
+    "anketil": "Anketil",
+    "rajh": "Rajh",
+    "wilhelm": "Wilhelm",
+    "reich": "Reich",
+    "nele karajlić": "Nele Karajlić",
+    "karajlić": "Karajlić",
+    "iranu": "Iranu",
+    "kolumbije": "Kolumbije",
+    "regan": "Regan",
+    "malteze": "Malteze",
+    "haksli": "Haksli",
+    "martina": "Martina",
+    "miloš": "Miloš",
+    "jovića": "Jovića",
+    "delon": "Delon",
+    "holandije": "Holandije",
+    "dubrovnik": "Dubrovnik",
+    "lajović": "Lajović",
+    "kapone": "Kapone",
+    "belgiji": "Belgiji",
+    "todorović": "Todorović",
+    "da gama": "da Gama",
+    "marino": "Marino",
+    "bogart": "Bogart",
+    "ćopić": "Ćopić",
+    "lorens": "Lorens",
+    "nušić": "Nušić",
+    "montano": "Montano",
+    "raspućin": "Raspućin",
+    "arabija": "Arabija",
+    "spasić": "Spasić",
+    "mekre": "Mekre",
+    "bata živojinović": "Bata Živojinović",
+    "živojinović": "Živojinović",
+    "džonson": "Džonson",
+    "Loh nes": "Loh Nes",
+    "baltimoru": "Baltimoru",
+    "obradović": "Obradović",
+    "vasiljev": "Vasiljev",
+    "de sika": "de Sika",
+    "šekularac": "Šekularac",
+    "ramacoti": "Ramacoti",
+    "petrović": "Petrović",
+    "njegoš": "Njegoš",
+    '"baz"': '"Baz"',
+    "stanković": "Stanković",
+    "nišavi": "Nišavi",
+    "japanu": "Japanu",
+    "leonov": "Leonov",
+    "real madrid": "Real Madrid",
+    "madrid": "Madrid",
+    "berlinu": "Berlinu",
+    "sudan": "Sudan",
+    "meksiku": "Meksiku",
+    "gojković": "Gojković",
+    "cune gojković": "Cune Gojković",
+    "luksemburg": "Luksemburg",
+    "savić": "Savić",
+    "makijaveli": "Makijaveli",
+    "indije": "Indije",
+    "mionici": "Mionici",
+    "šubašić": "Šubašić",
+    "indonezije": "Indonezije",
+    "korać": "Korać",
+    "bojanić": "Bojanić",
+    "gidra": "Gidra",
+    "stokholmu": "Stokholmu",
+    "bičer stou": "Bičer Stou",
+    "šekularac": "Šekularac",
+    "australije": "Australije",
+    "finskoj": "Finskoj",
+    "gandolfini": "Gandolfini",
+    "jorović": "Jorović",
+    "bulatović": "Bulatović",
+    "robert": "Robert",
+    "huku": "Huku",
+    "stenli": "Stenli",
+    "metjuz": "Metjuz",
+    "garašanin": "Garašanin",
+    "savić": "Savić",
+    "uelbek": "Uelbek",
+    "milutinović": "Milutinović",
+    "mika": "Mika",
+    "antić": "Antić",
+    "hoking": "Hoking",
+    "sparou": "Sparou",
+    "bogović": "Bogović",
+    "aranđelovc": "Aranđelovc",
+    "rumunije": "Rumunije",
+    "canić": "Canić",
+    "šumanović": "Šumanović",
+    "aronofski": "Aronofski",
+    "landštajner": "Landštajner",
+    "veličković": "Veličković",
+    "haneke": "Haneke",
+    "loren": "Loren",
+    "bunjuel": "Bunjuel",
+    "o'nil": "O'nil",
+    "harison": "Harison",
+    "šekspir": "Šekspir",
+    "kurdistana": "Kurdistana",
+    "dikens": "Dikens",
+    "karenjina": "Karenjina",
+    "simović": "Simović",
+    "karađorđević": "Karađorđević",
+    "Valentino rosi": "Valentino Rosi",
+    "džordž": "Džordž",
+    "ferari": "Ferari",
+    "džinović": "Džinović",
+    "jakšić": "Jakšić",
+    "konan": "Konan",
+    "dojl": "Dojl",
+    "belgije": "Belgije",
+    "andresku": "Andresku",
+    "montija": "Montija",
+    "montija pajtona": "Montija Pajtona",
+    "dravić": "Dravić",
+    "šupljikac": "Šupljikac",
+    "bekuta": "Bekuta",
+    "Leni kravic": "Leni Kravic",
+    "nadarević": "Nadarević",
+    "domanović": "Domanović",
+    "mihail": "Mihail",
+    "obrenovića": "Obrenovića",
+    "medvedev": "Medvedev",
+    "gustav": "Gustav",
+    "jung": "Jung",
+    "antonije": "Antonije",
+    "bursać": "Bursać",
+    "jagodini": "Jagodini",
+    "zaječaru": "Zaječaru",
+    "veneciji": "Veneciji",
+    "bogdanović": "Bogdanović",
+    "zemunu": "Zemunu",
+    "topalović": "Topalović",
+    "puškin": "Puškin",
+    "azije": "Azije",
+    "velaskez": "Velaskez",
+    "pekić": "Pekić",
+    "gvineja": "Gvineja",
+    "tokiju": "Tokiju",
+    "labović": "Labović",
+    "veletanlić": "Veletanlić",
+    "lampard": "Lampard",
+    "načić": "Načić",
+    "amadeus": "Amadeus",
+    "mocart": "Mocart",
+    "angelopulos": "Angelopulos",
+    "bugarskoj": "Bugarskoj",
+}
+general_transforms = [
+    SerbianCyrillicToLatinTransformer(),
+    Replacement(mapping),
+    WordOccurence(list(mapping.values())),
+]
 ANSWER = "answer"
 QUESTION = "question"
 processors = {
     "potera.csv": ListTransformer(
         general_transforms
         + [
-            Column(Replacement({x + " ": "" for x in "ABV"}), [ANSWER]),
+            Column(Replacement({x + " ": "" for x in "ABVD5"}), [ANSWER]),
             Column(CapitalizeTransformer(), [ANSWER]),
         ]
     ),
